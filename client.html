@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SocketSpace | Live Connection</title>
+  <script src="https://cdn.socket.io/4.8.4/socket.io.min.js"
+    integrity="sha384-fBrXvbDtHoeKWJ/hcA6M+YGueiDW+h45I7V6F2kD1S8bOkrF9rZYPLVkCR6BLR/1"
+    crossorigin="anonymous"></script>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1020;--panel:#121a2e;--panel2:#17223a;--line:#26334f;--text:#edf2ff;--muted:#91a0bd;--accent:#8b7cff;--green:#35d39a;--red:#ff6b7a}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% 0%,#20254a 0,transparent 40%),var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+    .wrap{max-width:1100px;margin:auto;padding:34px 22px 60px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:32px}
+    .brand{display:flex;align-items:center;gap:12px}.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#a394ff,#6254df);display:grid;place-items:center;font-size:22px;font-weight:800;box-shadow:0 8px 28px #7162e844}
+    h1{font-size:21px;margin:0;letter-spacing:-.5px}.sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .status{display:flex;align-items:center;gap:9px;padding:9px 13px;border:1px solid var(--line);border-radius:99px;background:#121a2e;color:var(--muted);font-size:13px}
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 12px currentColor}.status.online{color:var(--green)}.status.online .dot{background:var(--green)}
+    .hero{margin-bottom:24px}.eyebrow{color:#a99fff;text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:1.7px}.hero h2{font-size:clamp(28px,5vw,40px);line-height:1.12;letter-spacing:-1.3px;margin:8px 0}.hero p{color:var(--muted);max-width:620px;margin:0}
+    .grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.card{background:linear-gradient(160deg,#151f36,#11182a);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 16px 45px #0002}
+    .card h3{font-size:16px;margin:0 0 5px}.desc{font-size:13px;color:var(--muted);margin:0 0 18px}
+    .activity{height:330px;overflow:auto;display:flex;flex-direction:column;gap:10px;padding-right:4px}
+    .event{padding:11px 13px;border-radius:12px;background:#1a2540;border:1px solid #263653;display:flex;gap:11px;align-items:flex-start;font-size:13px;overflow-wrap:anywhere}
+    .event-icon{width:27px;height:27px;border-radius:9px;display:grid;place-items:center;background:#302b5a;flex:none}.event time{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+    .empty{margin:auto;text-align:center;color:var(--muted);font-size:13px}.empty strong{display:block;color:#dce4fa;font-size:14px;margin-bottom:4px}
+    .field{display:flex;gap:9px;margin-top:16px}.field input{min-width:0;flex:1;background:#0d1528;border:1px solid var(--line);border-radius:11px;padding:12px 13px;color:var(--text);outline:none}.field input:focus{border-color:var(--accent)}
+    button{border:0;border-radius:11px;padding:11px 15px;background:linear-gradient(135deg,#9587ff,#6c5ce7);color:white;font-weight:700;cursor:pointer;transition:.2s}button:hover{filter:brightness(1.12);transform:translateY(-1px)}button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+    .metric{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line)}.metric:last-of-type{border:0}.metric span{color:var(--muted);font-size:13px}.metric strong{font-size:14px}
+    .notice{margin-top:17px;padding:14px;border-radius:13px;background:#211f3c;border:1px solid #39345f;color:#c9c3ff;font-size:12px}
+    .notice strong{display:block;color:#e5e1ff;margin-bottom:4px;font-size:13px}.footer{color:#64728f;font-size:12px;text-align:center;margin-top:24px}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}.top{align-items:flex-start}.card{padding:18px}.activity{height:270px}.field{flex-direction:column}.field button{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="brand"><div class="logo">S</div><div><h1>SocketSpace</h1><div class="sub">Real-time connection dashboard</div></div></div>
+      <div class="status" id="connectionStatus"><span class="dot"></span><span id="statusText">Connecting…</span></div>
+    </header>
+
+    <section class="hero">
+      <div class="eyebrow">Live workspace</div>
+      <h2>Stay connected.<br>See what's happening.</h2>
+      <p>A simple real-time dashboard for your Socket.IO server. Monitor connection events, receive announcements and send test events.</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h3>Live activity</h3>
+        <p class="desc">Updates received from your existing Socket.IO backend.</p>
+        <div class="activity" id="activity" aria-live="polite">
+          <div class="empty" id="emptyState"><strong>Waiting for activity</strong>Socket events will appear here.</div>
+        </div>
+        <form class="field" id="testForm">
+          <input id="testMessage" maxlength="180" placeholder="Type a test message…" autocomplete="off">
+          <button id="sendButton" type="submit" disabled>Send test event</button>
+        </form>
+        <p class="desc" style="margin:9px 0 0">Test events are sent using your existing <code>fr</code> event. Your current server logs the message; it does not broadcast it to other users.</p>
+      </article>
+
+      <aside class="card">
+        <h3>Connection details</h3>
+        <p class="desc">Current browser session</p>
+        <div class="metric"><span>Connection</span><strong id="connectionValue">Connecting</strong></div>
+        <div class="metric"><span>Socket ID</span><strong id="socketId">—</strong></div>
+        <div class="metric"><span>Events received</span><strong id="eventCount">0</strong></div>
+        <div class="metric"><span>Last activity</span><strong id="lastActivity">—</strong></div>
+        <div class="notice">
+          <strong>Want personal rooms?</strong>
+          Private room creation and multi-user joining need backend events for creating rooms, joining by code, leaving rooms and relaying room messages. The current backend does not expose those features, so this frontend leaves them untouched rather than showing a non-working room system.
+        </div>
+      </aside>
+    </section>
+    <div class="footer">SocketSpace · Connected to your existing Socket.IO server on port 8080</div>
+  </main>
+
+  <script>
+    // Keep the existing backend URL and event names.
+    const socket = io("http://localhost:8080/", { transports: ["websocket"] });
+    const status = document.getElementById("connectionStatus");
+    const statusText = document.getElementById("statusText");
+    const connectionValue = document.getElementById("connectionValue");
+    const socketId = document.getElementById("socketId");
+    const eventCount = document.getElementById("eventCount");
+    const lastActivity = document.getElementById("lastActivity");
+    const activity = document.getElementById("activity");
+    const sendButton = document.getElementById("sendButton");
+    let received = 0;
+
+    function addEvent(title, message, icon = "✦") {
+      document.getElementById("emptyState")?.remove();
+      received++;
+      eventCount.textContent = received;
+      lastActivity.textContent = new Date().toLocaleTimeString();
+      const item = document.createElement("div");
+      item.className = "event";
+      const symbol = document.createElement("div");
+      symbol.className = "event-icon";
+      symbol.textContent = icon;
+      const content = document.createElement("div");
+      const heading = document.createElement("strong");
+      heading.textContent = title;
+      const detail = document.createElement("div");
+      detail.textContent = String(message);
+      const time = document.createElement("time");
+      time.textContent = new Date().toLocaleTimeString();
+      content.append(heading, detail, time);
+      item.append(symbol, content);
+      activity.prepend(item);
+    }
+
+    function setConnected(connected) {
+      status.classList.toggle("online", connected);
+      statusText.textContent = connected ? "Connected" : "Disconnected";
+      connectionValue.textContent = connected ? "Connected" : "Offline";
+      sendButton.disabled = !connected;
+      if (connected) socketId.textContent = socket.id || "Connected";
+    }
+
+    socket.on("connect", () => {
+      setConnected(true);
+      socketId.textContent = socket.id;
+      addEvent("Connected to server", "Your browser has established a Socket.IO connection.", "✓");
+    });
+    socket.on("disconnect", (reason) => {
+      setConnected(false);
+      addEvent("Disconnected", reason, "!");
+    });
+    socket.on("connect_error", (error) => {
+      setConnected(false);
+      addEvent("Connection error", error.message, "!");
+    });
+
+    socket.on("click", (message) => addEvent("Server message", message, "↙"));
+    socket.on("join", (message) => addEvent("New user joined", message, "＋"));
+    socket.on("announcement", (message) => addEvent("Announcement", message, "📣"));
+
+    document.getElementById("testForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = document.getElementById("testMessage");
+      const message = input.value.trim();
+      if (!message || !socket.connected) return;
+      socket.emit("fr", message);
+      addEvent("Test event sent", "Sent to the server using the existing fr event: " + message, "↑");
+      input.value = "";
+      input.focus();
+    });
+  </script>
+</body>
+</html>
